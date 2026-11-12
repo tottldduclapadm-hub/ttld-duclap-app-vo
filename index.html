@@ -14,10 +14,28 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-  :root { --nen: #0a1f6e; --chu: #fff; --vang: #ffe08a; }
+  :root { --nen: #0a1f6e; --chu: #fff; --vang: #ffe08a; --cao-thanh: 0px; }
   html, body { margin: 0; height: 100%; background: var(--nen); color: var(--chu); overflow: hidden;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--nen); }
+  #app { position: fixed; left: 0; right: 0; bottom: 0; top: var(--cao-thanh); width: 100%; height: calc(100% - var(--cao-thanh));
+    border: 0; display: block; background: var(--nen); }
+
+  /* Thanh tiêu đề riêng của cửa sổ app trên PC (Window Controls Overlay): tên app + nút Tải lại, kéo được để di chuyển cửa sổ */
+  #thanh { display: none; }
+  @media (display-mode: window-controls-overlay) {
+    :root { --cao-thanh: env(titlebar-area-height, 33px); }
+    #thanh { display: flex; align-items: center; gap: 8px; position: fixed; z-index: 3;
+      left: env(titlebar-area-x, 0); top: env(titlebar-area-y, 0);
+      width: env(titlebar-area-width, 100%); height: env(titlebar-area-height, 33px);
+      padding: 0 6px 0 10px; box-sizing: border-box; font-size: 13px; font-weight: 600;
+      -webkit-app-region: drag; app-region: drag; user-select: none; }
+    #thanh img { width: 18px; height: 18px; border-radius: 4px; }
+    #thanh .ten { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+    #thanh button { -webkit-app-region: no-drag; app-region: no-drag; min-height: 0; height: 26px; padding: 0 10px;
+      border-radius: 6px; font-size: 13px; background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.25); }
+    #thanh button:hover { background: rgba(255,224,138,.3); }
+  }
+
   #cho { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 16px; padding: 24px; text-align: center; background: var(--nen); transition: opacity .3s; z-index: 2; }
   #cho.an { opacity: 0; pointer-events: none; }
@@ -27,40 +45,63 @@
   .vong { width: 34px; height: 34px; border: 4px solid rgba(255,255,255,.25); border-top-color: var(--vang);
     border-radius: 50%; animation: quay 1s linear infinite; }
   @keyframes quay { to { transform: rotate(360deg); } }
-  button { font: inherit; font-weight: 700; padding: 12px 22px; min-height: 48px; border-radius: 12px; border: 0;
+  #cho button { font: inherit; font-weight: 700; padding: 12px 22px; min-height: 48px; border-radius: 12px; border: 0;
     background: var(--vang); color: #0a1f6e; cursor: pointer; }
   .an-di { display: none !important; }
 </style>
 </head>
 <body>
+<div id="thanh">
+  <img src="icon-192.png" alt="">
+  <span class="ten">Tổ ĐỨC LẬP QLCV</span>
+  <button id="nut-tai" type="button" title="Tải lại trang (Reload) — F5">⟳ Tải lại</button>
+</div>
 <div id="cho">
   <img src="icon-192.png" alt="">
   <h1>Tổ ĐỨC LẬP QLCV</h1>
   <div class="vong" id="vong"></div>
   <p id="cho-chu">Đang mở app…</p>
-  <button id="thu-lai" class="an-di">🔄 Thử lại</button>
+  <button id="thu-lai" class="an-di">🔄 Tải lại</button>
 </div>
 <iframe id="app" title="Tổ ĐỨC LẬP QLCV"
   allow="fullscreen; clipboard-read; clipboard-write; camera; microphone; geolocation"
-  allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  referrerpolicy="strict-origin-when-cross-origin"></iframe>
 <script src="cau-hinh.js"></script>
 <script>
+  /* Vỏ app: nhúng /exec (cau-hinh.js). App (khung trong của Apps Script) nói chuyện qua postMessage:
+   *   app -> vỏ { ttld:'hoi' }     : app đã chạy -> ẩn màn chờ, trả { ttld:'vo' } để app biết đang ở trong vỏ
+   *   app -> vỏ { ttld:'tai-lai' } : tải lại cả trang (vuốt xuống ở ĐT)
+   * Không nhận 'hoi' sau CHO_APP giây kể từ lúc khung tải xong -> màn xanh / app treo -> hiện nút Tải lại. */
   const app = document.getElementById('app'), cho = document.getElementById('cho'),
         chu = document.getElementById('cho-chu'), vong = document.getElementById('vong'), nut = document.getElementById('thu-lai');
-  let hen;
+  const CHO_APP = 30000;
+  let hen, henApp, daChay = false;
+  const taiLai = () => location.reload();
   function baoLoi(t) {
-    clearTimeout(hen); cho.classList.remove('an'); vong.classList.add('an-di'); nut.classList.remove('an-di'); chu.textContent = t;
+    clearTimeout(hen); clearTimeout(henApp); cho.classList.remove('an'); vong.classList.add('an-di'); nut.classList.remove('an-di'); chu.textContent = t;
   }
   function mo() {
     vong.classList.remove('an-di'); nut.classList.add('an-di'); cho.classList.remove('an'); chu.textContent = 'Đang mở app…';
-    if (!navigator.onLine) return baoLoi('Máy đang mất mạng. Bật Wi-Fi / 4G rồi bấm Thử lại.');
+    if (!navigator.onLine) return baoLoi('Máy đang mất mạng. Bật Wi-Fi / 4G rồi bấm Tải lại.');
     if (!window.LINK_APP) return baoLoi('Vỏ chưa có link app (cau-hinh.js).');
     clearTimeout(hen);
     hen = setTimeout(() => { chu.textContent = 'Mạng chậm, vẫn đang mở…'; nut.classList.remove('an-di'); }, 20000);
     app.src = window.LINK_APP;
   }
-  app.addEventListener('load', () => { if (!app.src) return; clearTimeout(hen); cho.classList.add('an'); });
-  nut.onclick = mo;
+  const anCho = () => { clearTimeout(hen); clearTimeout(henApp); cho.classList.add('an'); };
+  app.addEventListener('load', () => {
+    if (!app.src) return;
+    anCho();
+    if (!daChay) henApp = setTimeout(() => { if (!daChay) baoLoi('App chưa hiện (màn hình trống). Bấm Tải lại.'); }, CHO_APP);
+  });
+  window.addEventListener('message', e => {
+    let host = ''; try { host = new URL(e.origin).hostname; } catch (err) { return; }
+    if (!/(^|\.)googleusercontent\.com$|(^|\.)google\.com$/.test(host) || !e.data || typeof e.data.ttld !== 'string') return;
+    if (e.data.ttld === 'hoi') { daChay = true; anCho(); try { e.source.postMessage({ ttld: 'vo' }, e.origin); } catch (err) {} }
+    else if (e.data.ttld === 'tai-lai') taiLai();
+  });
+  nut.onclick = taiLai;
+  document.getElementById('nut-tai').onclick = taiLai;
   window.addEventListener('online', () => { if (!cho.classList.contains('an')) mo(); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   mo();
