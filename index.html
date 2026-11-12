@@ -64,8 +64,11 @@
   <button id="thu-lai" class="an-di">🔄 Tải lại</button>
 </div>
 <iframe id="app" title="Tổ ĐỨC LẬP QLCV"
-  allow="fullscreen; clipboard-read; clipboard-write; camera; microphone; geolocation"
-  referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  allow="fullscreen *; clipboard-read *; clipboard-write *; camera *; microphone *; geolocation *"
+  allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+<!-- Quyền cấp cho MỌI nguồn (*): app thật nằm trong khung con *.googleusercontent.com của script.google.com;
+     chỉ "fullscreen" (= nguồn src) thì ĐT có lúc không cho app bật toàn màn hình (Anh báo 12/11/2026). -->
+
 <script src="cau-hinh.js"></script>
 <script>
   /* Vỏ app: nhúng /exec (cau-hinh.js). App (khung trong của Apps Script) nói chuyện qua postMessage:
