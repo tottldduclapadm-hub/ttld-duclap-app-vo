@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tổ ĐỨC LẬP QLCV</title>
+<meta name="description" content="App quản lý công việc Tổ TTLĐ ĐỨC LẬP">
+<meta name="theme-color" content="#0a1f6e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ĐỨC LẬP QLCV">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root { --nen: #0a1f6e; --chu: #fff; --vang: #ffe08a; }
+  html, body { margin: 0; height: 100%; background: var(--nen); color: var(--chu); overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--nen); }
+  #cho { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px; text-align: center; background: var(--nen); transition: opacity .3s; z-index: 2; }
+  #cho.an { opacity: 0; pointer-events: none; }
+  #cho img { width: 112px; height: 112px; border-radius: 24px; }
+  #cho h1 { margin: 0; font-size: 20px; color: var(--vang); }
+  #cho p { margin: 0; font-size: 15px; opacity: .85; max-width: 340px; line-height: 1.5; }
+  .vong { width: 34px; height: 34px; border: 4px solid rgba(255,255,255,.25); border-top-color: var(--vang);
+    border-radius: 50%; animation: quay 1s linear infinite; }
+  @keyframes quay { to { transform: rotate(360deg); } }
+  button { font: inherit; font-weight: 700; padding: 12px 22px; min-height: 48px; border-radius: 12px; border: 0;
+    background: var(--vang); color: #0a1f6e; cursor: pointer; }
+  .an-di { display: none !important; }
+</style>
+</head>
+<body>
+<div id="cho">
+  <img src="icon-192.png" alt="">
+  <h1>Tổ ĐỨC LẬP QLCV</h1>
+  <div class="vong" id="vong"></div>
+  <p id="cho-chu">Đang mở app…</p>
+  <button id="thu-lai" class="an-di">🔄 Thử lại</button>
+</div>
+<iframe id="app" title="Tổ ĐỨC LẬP QLCV"
+  allow="fullscreen; clipboard-read; clipboard-write; camera; microphone; geolocation"
+  allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+<script src="cau-hinh.js"></script>
+<script>
+  const app = document.getElementById('app'), cho = document.getElementById('cho'),
+        chu = document.getElementById('cho-chu'), vong = document.getElementById('vong'), nut = document.getElementById('thu-lai');
+  let hen;
+  function baoLoi(t) {
+    clearTimeout(hen); cho.classList.remove('an'); vong.classList.add('an-di'); nut.classList.remove('an-di'); chu.textContent = t;
+  }
+  function mo() {
+    vong.classList.remove('an-di'); nut.classList.add('an-di'); cho.classList.remove('an'); chu.textContent = 'Đang mở app…';
+    if (!navigator.onLine) return baoLoi('Máy đang mất mạng. Bật Wi-Fi / 4G rồi bấm Thử lại.');
+    if (!window.LINK_APP) return baoLoi('Vỏ chưa có link app (cau-hinh.js).');
+    clearTimeout(hen);
+    hen = setTimeout(() => { chu.textContent = 'Mạng chậm, vẫn đang mở…'; nut.classList.remove('an-di'); }, 20000);
+    app.src = window.LINK_APP;
+  }
+  app.addEventListener('load', () => { if (!app.src) return; clearTimeout(hen); cho.classList.add('an'); });
+  nut.onclick = mo;
+  window.addEventListener('online', () => { if (!cho.classList.contains('an')) mo(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  mo();
+</script>
+</body>
+</html>
