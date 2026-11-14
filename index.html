@@ -107,6 +107,28 @@
   document.getElementById('nut-tai').onclick = taiLai;
   window.addEventListener('online', () => { if (!cho.classList.contains('an')) mo(); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  /* Cửa sổ app trên PC (Anh chốt 14/11/2026): CHỈ 2 cỡ — PHÓNG TO (Maximize) / toàn màn hình, hoặc THU NHỎ (Restore) = kiểu ĐT
+   * rộng RONG_THU px (phần trong), cao hết màn. Kéo viền đổi cỡ -> thả ra tự về đúng cỡ. Chỉ khi chạy như app đã cài (không phải tab), có chuột. */
+  const RONG_THU = 500;
+  const laCuaSoApp = () => matchMedia('(display-mode: window-controls-overlay), (display-mode: standalone), (display-mode: minimal-ui)').matches
+    && !matchMedia('(pointer: coarse)').matches && !/Android|iPhone|iPad/i.test(navigator.userAgent);
+  function giuCoThuNho() {
+    if (!laCuaSoApp() || document.visibilityState === 'hidden' || !outerWidth || !innerWidth) return;
+    const s = screen, phongTo = outerWidth >= s.availWidth - 4 && outerHeight >= s.availHeight - 4;
+    if (phongTo) return;                                      // phóng to / toàn màn hình: để nguyên
+    const w = RONG_THU + (outerWidth - innerWidth), h = s.availHeight;
+    if (Math.abs(outerWidth - w) <= 2 && Math.abs(outerHeight - h) <= 2) return;
+    try {
+      resizeTo(w, h);
+      const top = s.availTop || 0, left = s.availLeft || 0;
+      const x = Math.min(Math.max(screenX, left), left + s.availWidth - w);
+      if (screenY !== top || x !== screenX) moveTo(x, top);   // cao hết màn -> đỉnh cửa sổ sát mép trên
+    } catch (e) {}
+  }
+  let henCo;
+  window.addEventListener('resize', () => { clearTimeout(henCo); henCo = setTimeout(giuCoThuNho, 300); });
+  setTimeout(giuCoThuNho, 500);
   mo();
 </script>
 </body>
