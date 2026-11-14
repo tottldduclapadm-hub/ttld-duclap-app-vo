@@ -102,6 +102,7 @@
     if (!/(^|\.)googleusercontent\.com$|(^|\.)google\.com$/.test(host) || !e.data || typeof e.data.ttld !== 'string') return;
     if (e.data.ttld === 'hoi') { daChay = true; anCho(); try { e.source.postMessage({ ttld: 'vo' }, e.origin); } catch (err) {} }
     else if (e.data.ttld === 'tai-lai') taiLai();
+    else if (e.data.ttld === 'chuot') giuCoThuNho();   // app báo chuột vừa vào lại (có thể vừa kéo cửa sổ đi chỗ khác)
   });
   nut.onclick = taiLai;
   document.getElementById('nut-tai').onclick = taiLai;
@@ -118,12 +119,12 @@
     const s = screen, phongTo = outerWidth >= s.availWidth - 4 && outerHeight >= s.availHeight - 4;
     if (phongTo) return;                                      // phóng to / toàn màn hình: để nguyên
     const w = RONG_THU + (outerWidth - innerWidth), h = s.availHeight;
-    if (Math.abs(outerWidth - w) <= 2 && Math.abs(outerHeight - h) <= 2) return;
     try {
-      resizeTo(w, h);
+      if (Math.abs(outerWidth - w) > 2 || Math.abs(outerHeight - h) > 2) resizeTo(w, h);
+      // Kéo cửa sổ đi chỗ khác (Anh chốt 14/11/2026): cạnh trên / dưới = mép màn, không lệch ra ngoài lề trái / phải
       const top = s.availTop || 0, left = s.availLeft || 0;
-      const x = Math.min(Math.max(screenX, left), left + s.availWidth - w);
-      if (screenY !== top || x !== screenX) moveTo(x, top);   // cao hết màn -> đỉnh cửa sổ sát mép trên
+      const x = Math.min(Math.max(screenX, left - 8), left + s.availWidth - w + 8);   // ±8: viền ẩn của Windows
+      if (Math.abs(screenY - top) > 2 || Math.abs(x - screenX) > 2) moveTo(x, top);
     } catch (e) {}
   }
   let henCo;

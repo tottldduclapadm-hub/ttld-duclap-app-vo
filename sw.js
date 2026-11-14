@@ -1,7 +1,7 @@
 /* Service worker của vỏ: chỉ lưu sẵn trang vỏ + icon (mở nhanh, mất mạng vẫn hiện thông báo).
    KHÔNG lưu dữ liệu app (app chạy trong iframe từ script.google.com, không đi qua đây).
    Đổi file vỏ -> tăng PHIEN để máy người dùng lấy bản mới. */
-const PHIEN = 'vo-v5';
+const PHIEN = 'vo-v6';
 const FILE = ['./', './index.html', './cau-hinh.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
