@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tổ CẦN ĐƯỚC QLCV</title>
+<meta name="description" content="App quản lý công việc Tổ TTLĐ CẦN ĐƯỚC">
+<meta name="theme-color" content="#0a1f6e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CẦN ĐƯỚC QLCV">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root { --nen: #0a1f6e; --chu: #fff; --vang: #ffe08a; --cao-thanh: 0px; }
+  html, body { margin: 0; height: 100%; background: var(--nen); color: var(--chu); overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #app { position: fixed; left: 0; right: 0; bottom: 0; top: var(--cao-thanh); width: 100%; height: calc(100% - var(--cao-thanh));
+    border: 0; display: block; background: var(--nen); }
+
+  /* Thanh tiêu đề riêng của cửa sổ app trên PC (Window Controls Overlay): tên app + nút Tải lại, kéo được để di chuyển cửa sổ */
+  #thanh { display: none; }
+  @media (display-mode: window-controls-overlay) {
+    :root { --cao-thanh: env(titlebar-area-height, 33px); }
+    #thanh { display: flex; align-items: center; gap: 8px; position: fixed; z-index: 3;
+      left: env(titlebar-area-x, 0); top: env(titlebar-area-y, 0);
+      width: env(titlebar-area-width, 100%); height: env(titlebar-area-height, 33px);
+      padding: 0 6px 0 10px; box-sizing: border-box; font-size: 13px; font-weight: 600;
+      -webkit-app-region: drag; app-region: drag; user-select: none; }
+    #thanh img { width: 18px; height: 18px; border-radius: 4px; }
+    #thanh .ten { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+    #thanh button { -webkit-app-region: no-drag; app-region: no-drag; min-height: 0; height: 26px; padding: 0 10px;
+      border-radius: 6px; font-size: 13px; background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.25); }
+    #thanh button:hover { background: rgba(255,224,138,.3); }
+  }
+
+  #cho { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px; text-align: center; background: var(--nen); transition: opacity .3s; z-index: 2; }
+  #cho.an { opacity: 0; pointer-events: none; }
+  #cho img { width: 112px; height: 112px; border-radius: 24px; }
+  #cho h1 { margin: 0; font-size: 20px; color: var(--vang); }
+  #cho p { margin: 0; font-size: 15px; opacity: .85; max-width: 340px; line-height: 1.5; }
+  .vong { width: 34px; height: 34px; border: 4px solid rgba(255,255,255,.25); border-top-color: var(--vang);
+    border-radius: 50%; animation: quay 1s linear infinite; }
+  @keyframes quay { to { transform: rotate(360deg); } }
+  #cho button { font: inherit; font-weight: 700; padding: 12px 22px; min-height: 48px; border-radius: 12px; border: 0;
+    background: var(--vang); color: #0a1f6e; cursor: pointer; }
+  .an-di { display: none !important; }
+</style>
+</head>
+<body>
+<div id="thanh">
+  <img src="icon-192.png" alt="">
+  <span class="ten">Tổ CẦN ĐƯỚC QLCV</span>
+  <button id="nut-tai" type="button" title="Tải lại trang (Reload) — F5">⟳ Tải lại</button>
+</div>
+<div id="cho">
+  <img src="icon-192.png" alt="">
+  <h1>Tổ CẦN ĐƯỚC QLCV</h1>
+  <div class="vong" id="vong"></div>
+  <p id="cho-chu">Đang mở app…</p>
+  <button id="thu-lai" class="an-di">🔄 Tải lại</button>
+</div>
+<iframe id="app" title="Tổ CẦN ĐƯỚC QLCV"
+  allow="fullscreen *; clipboard-read *; clipboard-write *; camera *; microphone *; geolocation *"
+  allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+<!-- Quyền cấp cho MỌI nguồn (*): app thật nằm trong khung con *.googleusercontent.com của script.google.com;
+     chỉ "fullscreen" (= nguồn src) thì ĐT có lúc không cho app bật toàn màn hình (Anh báo 12/11/2026). -->
+
+<script src="cau-hinh.js"></script>
+<script>
+  /* Vỏ app: nhúng /exec (cau-hinh.js). App (khung trong của Apps Script) nói chuyện qua postMessage:
+   *   app -> vỏ { ttld:'hoi' }     : app đã chạy -> ẩn màn chờ, trả { ttld:'vo' } để app biết đang ở trong vỏ
+   *   app -> vỏ { ttld:'tai-lai' } : tải lại cả trang (vuốt xuống ở ĐT)
+   *   app -> vỏ { ttld:'in-pdf', pdf: Uint8Array, ten } (V8.5.9, Anh chốt 23/11/2026, PC): IN file PDF (4 góc app đã gắn sẵn) bằng
+   *     trình xem PDF của trình duyệt trong khung ẩn của VỎ - khung app (sandbox Apps Script) bị Chrome chặn trình xem PDF.
+   *     In PDF thì trình duyệt KHÔNG chèn đầu / chân trang riêng (ngày giờ, link) dù máy để lề / tick "Đầu trang và chân trang".
+   *     Vỏ trả 'vo' kèm inPdf: true -> app biết vỏ in được (vỏ cũ không có -> app in kiểu cũ).
+   * Thử bản /dev trong vỏ: <link vỏ>#thu=<link /dev của Apps Script> (chỉ nhận đúng dạng link /dev, không lưu link trong repo).
+   * Không nhận 'hoi' sau CHO_APP giây kể từ lúc khung tải xong -> màn xanh / app treo -> hiện nút Tải lại. */
+  const app = document.getElementById('app'), cho = document.getElementById('cho'),
+        chu = document.getElementById('cho-chu'), vong = document.getElementById('vong'), nut = document.getElementById('thu-lai');
+  const CHO_APP = 30000;
+  let hen, henApp, daChay = false;
+  const taiLai = () => location.reload();
+  function baoLoi(t) {
+    clearTimeout(hen); clearTimeout(henApp); cho.classList.remove('an'); vong.classList.add('an-di'); nut.classList.remove('an-di'); chu.textContent = t;
+  }
+  function mo() {
+    vong.classList.remove('an-di'); nut.classList.add('an-di'); cho.classList.remove('an'); chu.textContent = 'Đang mở app…';
+    if (!navigator.onLine) return baoLoi('Máy đang mất mạng. Bật Wi-Fi / 4G rồi bấm Tải lại.');
+    if (!window.LINK_APP) return baoLoi('Vỏ chưa có link app (cau-hinh.js).');
+    clearTimeout(hen);
+    hen = setTimeout(() => { chu.textContent = 'Mạng chậm, vẫn đang mở…'; nut.classList.remove('an-di'); }, 20000);
+    app.src = linkThu() || window.LINK_APP;
+  }
+  function linkThu() {
+    const m = location.hash.match(/^#thu=(https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/dev)$/);
+    return m ? m[1] : '';
+  }
+  /* In PDF trong khung ẩn của vỏ (giữ khung tới lần in sau: dọn sớm thì hộp in trắng) */
+  function inPdf(pdf, ten) {
+    let k = document.getElementById('in-pdf'); if (k) { URL.revokeObjectURL(k.src); k.remove(); }
+    k = document.createElement('iframe'); k.id = 'in-pdf'; k.title = ten || 'In';
+    k.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+    k.onload = () => setTimeout(() => { try { k.contentWindow.focus(); k.contentWindow.print(); } catch (err) {} }, 300);
+    k.src = URL.createObjectURL(new Blob([pdf], { type: 'application/pdf' }));
+    document.body.appendChild(k);
+  }
+  const anCho = () => { clearTimeout(hen); clearTimeout(henApp); cho.classList.add('an'); };
+  app.addEventListener('load', () => {
+    if (!app.src) return;
+    anCho();
+    if (!daChay) henApp = setTimeout(() => { if (!daChay) baoLoi('App chưa hiện (màn hình trống). Bấm Tải lại.'); }, CHO_APP);
+  });
+  window.addEventListener('message', e => {
+    let host = ''; try { host = new URL(e.origin).hostname; } catch (err) { return; }
+    if (!/(^|\.)googleusercontent\.com$|(^|\.)google\.com$/.test(host) || !e.data || typeof e.data.ttld !== 'string') return;
+    if (e.data.ttld === 'hoi') { daChay = true; anCho(); try { e.source.postMessage({ ttld: 'vo', inPdf: true }, e.origin); } catch (err) {} }
+    else if (e.data.ttld === 'tai-lai') taiLai();
+    else if (e.data.ttld === 'in-pdf' && e.data.pdf) inPdf(e.data.pdf, e.data.ten);
+    else if (e.data.ttld === 'chuot') giuCoThuNho();   // app báo chuột vừa vào lại (có thể vừa kéo cửa sổ đi chỗ khác)
+  });
+  nut.onclick = taiLai;
+  document.getElementById('nut-tai').onclick = taiLai;
+  window.addEventListener('online', () => { if (!cho.classList.contains('an')) mo(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  /* Cửa sổ app trên PC (Anh chốt 14/11/2026): CHỈ 2 cỡ — PHÓNG TO (Maximize) / toàn màn hình, hoặc THU NHỎ (Restore) = kiểu ĐT
+   * rộng RONG_THU px (phần trong), cao hết màn. Kéo viền đổi cỡ -> thả ra tự về đúng cỡ. Chỉ khi chạy như app đã cài (không phải tab), có chuột. */
+  const RONG_THU = 500;
+  const laCuaSoApp = () => matchMedia('(display-mode: window-controls-overlay), (display-mode: standalone), (display-mode: minimal-ui)').matches
+    && !matchMedia('(pointer: coarse)').matches && !/Android|iPhone|iPad/i.test(navigator.userAgent);
+  function giuCoThuNho() {
+    if (!laCuaSoApp() || document.visibilityState === 'hidden' || !outerWidth || !innerWidth) return;
+    const s = screen, phongTo = outerWidth >= s.availWidth - 4 && outerHeight >= s.availHeight - 4;
+    if (phongTo) return;                                      // phóng to / toàn màn hình: để nguyên
+    const w = RONG_THU + (outerWidth - innerWidth), h = s.availHeight;
+    try {
+      if (Math.abs(outerWidth - w) > 2 || Math.abs(outerHeight - h) > 2) resizeTo(w, h);
+      // Kéo cửa sổ đi chỗ khác (Anh chốt 14/11/2026): cạnh trên / dưới = mép màn, không lệch ra ngoài lề trái / phải
+      const top = s.availTop || 0, left = s.availLeft || 0;
+      const x = Math.min(Math.max(screenX, left - 8), left + s.availWidth - w + 8);   // ±8: viền ẩn của Windows
+      if (Math.abs(screenY - top) > 2 || Math.abs(x - screenX) > 2) moveTo(x, top);
+    } catch (e) {}
+  }
+  let henCo;
+  window.addEventListener('resize', () => { clearTimeout(henCo); henCo = setTimeout(giuCoThuNho, 300); });
+  setTimeout(giuCoThuNho, 500);
+  mo();
+</script>
+</body>
+</html>

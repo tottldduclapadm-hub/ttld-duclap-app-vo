@@ -1,7 +1,10 @@
 /* Service worker của vỏ: chỉ lưu sẵn trang vỏ + icon (mở nhanh, mất mạng vẫn hiện thông báo).
    KHÔNG lưu dữ liệu app (app chạy trong iframe từ script.google.com, không đi qua đây).
-   Đổi file vỏ -> tăng PHIEN để máy người dùng lấy bản mới. */
-const PHIEN = 'vo-v7';
+   Đổi file vỏ -> tăng PHIEN để máy người dùng lấy bản mới.
+   Vỏ tổ khác (thư mục con, VD can-duoc/) dùng chung file này, dang.js đổi PHIEN thành 'vo-<mã>-vN' (28/11/2026):
+   bộ nhớ đệm CHUNG nguồn (github.io) -> mỗi vỏ chỉ xóa bản cũ CÙNG tiền tố của mình, không xóa của vỏ khác. */
+const PHIEN = 'vo-v8';
+const TIEN_TO = PHIEN.replace(/\d+$/, '');
 const FILE = ['./', './index.html', './cau-hinh.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -9,7 +12,7 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== PHIEN).map(k => caches.delete(k))))
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.indexOf(TIEN_TO) === 0 && k !== PHIEN).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
