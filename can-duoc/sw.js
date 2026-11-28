@@ -3,7 +3,7 @@
    Đổi file vỏ -> tăng PHIEN để máy người dùng lấy bản mới.
    Vỏ tổ khác (thư mục con, VD can-duoc/) dùng chung file này, dang.js đổi PHIEN thành 'vo-<mã>-vN' (28/11/2026):
    bộ nhớ đệm CHUNG nguồn (github.io) -> mỗi vỏ chỉ xóa bản cũ CÙNG tiền tố của mình, không xóa của vỏ khác. */
-const PHIEN = 'vo-cd-v8';
+const PHIEN = 'vo-cd-v8-2';
 const TIEN_TO = PHIEN.replace(/\d+$/, '');
 const FILE = ['./', './index.html', './cau-hinh.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
